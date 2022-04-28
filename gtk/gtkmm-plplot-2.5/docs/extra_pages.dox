@@ -1,0 +1,289 @@
+/** \mainpage
+ *
+ *  \htmlonly
+ *  <p><img src="test1.png" width="500" name="slide"/></p>
+ *  <script type="text/javascript">
+ *  var image1 = new Image();
+ *  image1.src = "test1.png"
+ *  var image2 = new Image();
+ *  image2.src = "test2.png"
+ *  var image3 = new Image();
+ *  image3.src = "test3.png"
+ *  var image4 = new Image();
+ *  image4.src = "test4.png"
+ *  var image5 = new Image();
+ *  image5.src = "test5.png"
+ *  var image6 = new Image();
+ *  image6.src = "test6.png"
+ *  var image7 = new Image();
+ *  image7.src = "test7.png"
+ *  var image8 = new Image();
+ *  image8.src = "test8.png"
+ *  var image9 = new Image();
+ *  image9.src = "test9.png"
+ *  var image10 = new Image();
+ *  image10.src = "test10.png"
+ *  var image11 = new Image();
+ *  image11.src = "test11.png"
+ *  var image12 = new Image();
+ *  image12.src = "test12.png"
+ *  var image13 = new Image();
+ *  image13.src = "test13.png"
+ *
+ *  var step = 1;
+ *  function slideit() {
+ *    document.images.slide.src = eval("image"+step+".src");
+ *    if (step < 13)
+ *      step++;
+ *    else
+ *      step=1;
+ *    setTimeout("slideit()", 2500);
+ *  }
+ *  slideit();
+ *  </script>
+ *  \endhtmlonly
+ *
+ *  Scientific plotting and GTK+ have never been good friends.
+ *  Over the years there have been several attempts like [GtkExtra](http://gtkextra.sourceforge.net/cms/),
+ *  [GtkDataBox](http://sourceforge.net/projects/gtkdatabox/), [GoatPlot](https://github.com/drahnr/goatplot),
+ *  [GtkGraph](http://gtkgraph.sourceforge.net), [Plotmm](http://plotmm.sourceforge.net/index.html)...
+ *  All of these packages unfortunately appear to share a lack of development and
+ *  maintenance, which is most clearly shown by the fact that they do not support
+ *  the latest release series GTK+3!
+ *
+ *  Now it is clear that writing a plotting library for GTK+ is a huge and cumbersome
+ *  task, and the lack of support for GTK+3 can be most certainly explained by the transition
+ *  of the GTK+ drawing routines to use Cairo instead of GDK, which essentially required developers
+ *  to rewrite all their code from scratch.
+ *
+ *  Due to the nature of my scientific work, I found myself in need of scientific plotting
+ *  widget support in GTK+ and for some time I have been able to do what I needed with
+ *  GtkExtra. Although certainly not perfect, it comes with a wide range of plotting routines,
+ *  but as I said before, it only supports GTK+2. In order to address this shortcoming, I have joined
+ *  the development team some time ago but I found myself lacking the knowledge of the GTK+ and Cairo
+ *  internals to produce a working version that supports GTK+3.
+ *
+ *  Despite the lack of attention by the other developers of GtkExtra, I found myself still in need
+ *  of a scientific plotting widget for GTK+3, so I decided to find a different solution.
+ *  Since I certainly do not have the skill (or time for that matter) to write an entire class of GTK+ widgets for
+ *  scientific plotting, I had to find a different approach. The idea that eventually culminated
+ *  into this project was the following: first I rediscovered the [PLplot](http://plplot.sourceforge.net) library, which
+ *  I had used many years ago to produce simple plots from within command-line programs. I went through their (excellent)
+ *  documentation and discovered that they had introduced support for a Cairo plotting driver, along with an `extcairo` device
+ *  that allowed PLplot to draw onto a Cairo context. An example is included in the source where they demonstrate
+ *  this feature by plotting onto a Cairo context connected to a PostScript surface. Based on this example I wrote
+ *  my own Gtkmm widget that inherits from `Gtkmm::DrawingArea` with a custom `on_draw` method as explained in the
+ *  [GTK+](https://developer.gnome.org/gtk3/stable/GtkDrawingArea.html) and [Gtkmm](https://developer.gnome.org/gtkmm/stable/classGtk_1_1DrawingArea.html) manuals.
+ *  With surprisingly little work, I managed to produce a nice looking plot.
+ *
+ *  I followed up with a blogpost [about this](http://tschoonj.github.io/blog/2015/07/05/embedding-plplot-in-gtk-drawingareas/) and
+ *  a couple of days later I decided to start this project after it was clear that it could be useful to myself and my colleages.
+ *
+ *  I think that the approach followed by Gtkmm-PLplot has the following advantages:
+ *  - Depends on a mature toolkit (PLplot) to do the bulk of the work. No need for me to write the low-level plotting routines.
+ *  - Relies on Cairo for rendering, which looks like it will remain the GTK+ workhorse for a long time to come. This means low maintenance.
+ *  - PLplot itself has a lot of useful features, but suffers (IMHO) from its obscure, often acronym based hard to remember API. Gtkmm-PLplot hides this API
+ *    and offers an interface that should be familiar to anyone with GTK+/Gtkmm experience.
+ *  - One of the things that bothers me about GtkExtra is that every time you change a plot or canvas property, you are responsible for calling drawing routines to ensure the widget is updated accordingly. Gtkmm-PLplot does this for you: a property is updated, everything is redrawn immediately. This is done by relying heavily on [libsigc++](http://libsigc.sourceforge.net)'s signalling
+ *
+ *  There may be people wondering why I didn't write this in plain C using GTK+ instead of Gtkmm. I acknowledge that this project would
+ *  benefit from this as it makes the API easily available in other languages through GObject introspection. However, writing GTK+ widgets is a real pain
+ *  (remember: nobody is maintaining those other plotting widgets...), while writing in C++ produces nice, streamlined and compact code, especially when using the C++11 features. It's also just
+ *  a lot more fun to do, and that's very important to me :-)
+ *
+ *  Starting with version 2.0, Gtkmm-PLplot is released under the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl-3.0.en.html).
+
+ *  That's it! Enjoy using Gtkmm-PLplot and let me know if you run into bugs...
+ *  \author Tom Schoonjans
+ *
+ *  \page installation_instructions Installation instructions
+ *
+ *  \section requirements Requirements
+ *  Gtkmm-PLplot can only be installed provided the following dependencies are
+ *  present on your system:
+ *  - Gtkmm (3.x) and its (long list) of dependencies
+ *  - PLplot, including its C++ bindings. This package is currently being developed against PLplot 5.11.0,
+ *    but we will make sure it also runs with older versions.
+ *  - A C++ compiler with full support of the C++11 standard. Compilers known to do the job are recent versions of GCC and clang.
+ *  - Boost (optional)
+ *
+ *  \section downloading Downloading the software
+ *
+ *  The source code release tarballs are hosted on the Github repository, in the [releases section](https://github.com/tschoonj/gtkmm-plplot/releases).
+ *  Just get the latest tarball and run the following commands:
+ *
+ *       tar xfvz gtkmm-plplot-x.y.tar.gz
+ *       cd gtkmm-plplot-x.y
+ *       mkdir build ; cd build
+ *       meson
+ *       ninja
+ *       ninja install
+ *
+ *  Alternatively, use `./configure`, `make` and `make install`, but support for GNU Autotools is deprecated and will be removed in a future release.
+ *
+ *  \subsection homebrew Homebrew
+ *
+ *  Homebrew users can install Gtkmm-PLplot via my tap:
+ *
+ *  > `brew install tschoonj/tap/gtkmm-plplot`
+ *
+ *  \subsection linux Linux
+ *  \subsubsection rhel Fedora, Centos and Scientific Linux
+ *  To facilitate the installation on RPM based Linux distributions, the package includes a spec file which can be used to produce RPM packages for linux distributions that support them (Fedora, Red Hat etc). The developers have built 64-bit RPM packages of Gtkmm-PLplot for the officially supported Fedora and Redhat EL/CentOS/Scientific Linux 7 and 8 distributions. Access to my RPM repository can be obtained as follows for Fedora distros:
+ *
+ * > `sudo rpm -Uvh http://xmi-yum.tomschoonjans.eu/xmi-repo-key-fedora.noarch.rpm`
+ *
+ * for Red Hat EL 7 based distributions:
+ *
+ * > `sudo rpm -Uvh http://xmi-yum.tomschoonjans.eu/xmi-repo-key-7.0-1.el7.noarch.rpm`
+ *
+ * for Red Hat EL 8 based distributions:
+ *
+ * > `sudo rpm -Uvh http://xmi-yum.tomschoonjans.eu/xmi-repo-key-8.0-1.el8.noarch.rpm`
+ *
+ * The Gtkmm-PLplot packages themselves can then be downloaded using yum (or \c dnf which is increasingly being used nowadays):
+ *
+ * > `sudo yum install gtkmm-plplot gtkmm-plplot-devel gtkmm-plplot-doc`
+ *
+ * Updates can be installed in a similar way:
+ *
+ * > `sudo yum update gtkmm-plplot gtkmm-plplot-devel gtkmm-plplot-doc`
+ *
+ * \subsubsection debian Debian and Ubuntu
+ *
+ * Packages were created for Debian and Ubuntu. Currently the following flavors are supported: Debian Buster and several Ubuntu versions .
+ * In order to access these packages using your favorite package manager, execute the following command to import my public key:
+ *
+ * > `curl http://xmi-apt.tomschoonjans.eu/xmi.packages.key | sudo apt-key add -`
+ *
+ * Next, add the package download location corresponding to your distribution to the /etc/apt/sources.list file (as root):
+ *
+ * Debian Buster:
+ *
+ *       deb http://xmi-apt.tomschoonjans.eu/debian buster stable
+ *       deb-src http://xmi-apt.tomschoonjans.eu/debian buster stable
+ *
+ * Ubuntu Bionic 18.04:
+ *
+ *       deb [arch=amd64] http://xmi-apt.tomschoonjans.eu/ubuntu bionic stable
+ *       deb-src http://xmi-apt.tomschoonjans.eu/ubuntu bionic stable
+ *
+ * Ubuntu Eoan 19.10:
+ *
+ *       deb [arch=amd64] http://xmi-apt.tomschoonjans.eu/ubuntu eoan stable
+ *       deb-src http://xmi-apt.tomschoonjans.eu/ubuntu eoan stable
+ *
+ * Ubuntu Focal 20.04:
+ *
+ *       deb [arch=amd64] http://xmi-apt.tomschoonjans.eu/ubuntu focal stable
+ *       deb-src http://xmi-apt.tomschoonjans.eu/ubuntu focal stable
+ *
+ * When the sources.list file contains the correct download locations, update the apt cache by running:
+ *
+ * > `sudo apt-get update`
+ *
+ * After this, one can install Gtkmm-PLplot by executing the following command:
+ *
+ * > `sudo apt-get install libgtkmm-plplot2 libgtkmm-plplot2-dev libgtkmm-plplot2-doc`
+ *
+ * \subsubsection archlinux Arch Linux
+ *
+ * Thanks to the efforts of Grzegorz Uriasz, Gtkmm-PLplot can now be downloaded from the Arch User Repository. To get the most recent stable version:
+ *
+ * > `yaourt -S gtkmm3-plplot`
+ *
+ * For the latest development version:
+ *
+ * > `yaourt -S gtkmm3-plplot-git`
+ *
+ * \subsection head Github repository
+ *
+ * People interested in running the latest development version will have to clone the Github repository, and install meson and ninja:
+ *
+ *       git clone git@github.com:tschoonj/gtkmm-plplot.git
+ *       cd gtkmm-plplot
+ *       mkdir build ; cd build
+ *       meson .. 
+ *       ninja
+ *       ninja install
+ *
+ * If building with GNU autotools is preferred, install autoconf, automake, libtool and mm-common.
+ *
+ *       git clone git@github.com:tschoonj/gtkmm-plplot.git
+ *       cd gtkmm-plplot
+ *       autoreconf -i
+ *       ./configure
+ *       make
+ *       make install
+ * 
+ * \page usage Usage
+ *
+ * Include the Gtkmm-PLplot header:
+ * \code
+ * #include <gtkmm-plplot.h>
+ * \endcode
+ * This includes every header installed by Gtkmm-PLplot, so can slow down
+ * compilation, but suffices for this simple example. Assuming that your
+ * program source file is @c program.cc, compile it with:
+ * \code
+ * g++ program.cc -o program  `pkg-config --cflags --libs gtkmm-plplot-2.0`
+ * \endcode
+ * Alternatively, if using autoconf, use the following in @c configure.ac:
+ * \code
+ * PKG_CHECK_MODULES([GTKMMPLPLOT], [gtkmm-plplot-2.0])
+ * \endcode
+ * Then use the generated \c GTKMMPLPLOT_CFLAGS and \c GTKMMPLPLOT_LIBS variables in
+ * the project \c Makefile.am files. For example:
+ * \code
+ * program_CPPFLAGS = $(GTKMMPLPLOT_CFLAGS)
+ * program_LDADD = $(GTKMMPLPLOT_LIBS)
+ * \endcode
+ *
+ * \page examples Examples
+ *
+ * This page contains the code of the tests I have included to demonstrate the
+ * capabilities of Gtkmm-PLplot. The code should be quite straightforward and contains
+ * some commenting where useful. Every testcase is followed by a screenshot of the corresponding running program.
+ *
+ * \tableofcontents
+ *
+ * \section example1 Example 1: Plot data properties and zooming
+ * \include test1.cpp
+ * \image html test1.png "Example 1"
+ * \section example2 Example 2: Logarithmic axes and box styles
+ * \include test2.cpp
+ * \image html test2.png "Example 2"
+ * \section example3 Example 3: Adding, removing, showing and hiding plots
+ * \include test3.cpp
+ * \image html test3.png "Example 3"
+ * \section example4 Example 4: Displaying multiple plots on a single canvas
+ * \include test4.cpp
+ * \image html test4.png "Example 4"
+ * \section example5 Example 5: Mixing plot lines and symbols plus adding datapoints
+ * \include test5.cpp
+ * \image html test5.png "Example 5"
+ * \section example6 Example 6: Polar coordinate systems
+ * \include test6.cpp
+ * \image html test6.png "Example 6"
+ * \section example7 Example 7: a Simple contour plot
+ * \include test7.cpp
+ * \image html test7.png "Example 7"
+ * \section example8 Example 8: a Shaded contour plot
+ * \include test8.cpp
+ * \image html test8.png "Example 8"
+ * \section example9 Example 9: a Three-dimensional plot
+ * \include test9.cpp
+ * \image html test9.png "Example 9"
+ * \section example10 Example 10: use Gtkmm-PLplot from Gtk+
+ * \include test10.cpp
+ * \image html test10.png "Example 10"
+ * \section example11 Example 11: 2 dimensional plots with errorbars
+ * \include test11.cpp
+ * \image html test11.png "Example 11"
+ * \section example12 Example 12: Histograms 
+ * \include test12.cpp
+ * \image html test12.png "Example 12"
+ * \section example13 Example 13: Dates and times
+ * \include test13.cpp
+ * \image html test13.png "Example 13"
+ */

@@ -1,0 +1,13 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: Gtkmm-PLplot
+Description: a scientific plotting widget collection for Gtkmm
+Version: 2.5
+Requires: gtkmm-3.0 > 3.0.0
+Requires.private: plplot-c++ >= 5.11.0
+Conflicts:
+Libs: -L${libdir} -lgtkmm-plplot-2.0
+Cflags: -I${includedir}/gtkmm-plplot-2.0 -I${libdir}/gtkmm-plplot-2.0/include 
